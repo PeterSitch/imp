@@ -1,6 +1,8 @@
 import streamlit as st
 import random
 import pandas as pd
+import json
+from google.cloud import firestore
 
 
 
@@ -11,6 +13,14 @@ def get_imps():
     imps = df[[x for x in df.columns if 'imp' in x.lower()]]
     imps = imps.melt(ignore_index=False).dropna()
     return imps
+
+
+@st.experimental_singleton
+def fire_db():
+    key_dict = json.loads(st.secrets["textkey"])
+    creds = service_account.Credentials.from_service_account_info(key_dict)
+    db = firestore.Client(credentials=creds, project="imps-store")
+    return db
 
 
 
@@ -52,9 +62,12 @@ with st.form('Classify',clear_on_submit=True):
 
     if submitted:
         if imp_type is not None:
-            with open('tags.txt','a+') as f:
-                f.write(f'{ran_imp.Index};{ran_imp.variable};{imp_type};{imp_key_words}\n')
-        
+            db = fire_db()
+            #with open('tags.txt','a+') as f:
+            #    f.write(f'{ran_imp.Index};{ran_imp.variable};{imp_type};{imp_key_words}\n')
+            db.collection('imps_data').add({'urn':ran_imp.Index,'imp':ran_imp.variable,'type':imp_type,'key_words':imp_key_words})
+
+
         new_imp()
         st.experimental_rerun()
         
